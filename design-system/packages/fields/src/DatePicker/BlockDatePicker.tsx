@@ -2,7 +2,7 @@
 /** @jsx jsx */
 
 import { Fragment, useCallback, useEffect, useRef } from 'react'
-import { jsx } from '@keystone-ui/core'
+import { jsx, Stack } from '@keystone-ui/core'
 import {
   deserializeDate,
   formatDate,
@@ -12,6 +12,7 @@ import {
 import { type DateType } from '../types'
 import { Calendar } from './Calendar'
 import { InputButton } from './components/InputButton'
+import { FieldLabel } from '../FieldLabel'
 
 export type DateInputValue = string | undefined
 
@@ -20,6 +21,7 @@ export type DatePickerProps = {
   onClear: () => void
   onBlur?: () => void
   value: DateType
+  label?: string
 }
 
 export function useEventCallback<Func extends (...args: any) => any>(callback: Func): Func {
@@ -38,6 +40,7 @@ export const BlockDatePicker = ({
   onUpdate,
   onClear,
   onBlur: _onBlur,
+  label,
   ...props
 }: DatePickerProps) => {
   const onBlur = useEventCallback(() => {
@@ -51,31 +54,30 @@ export const BlockDatePicker = ({
     [onUpdate]
   )
 
-  // We **can** memoize this, but its a trivial operation
-  // and in the opinion of the author not really something to do
-  // before other more important performance optimisations
   const selectedDay = deserializeDate(value)
   const formattedDate: DateInputValue = value ? formatDate(selectedDay) : undefined
 
   return (
-    <Fragment>
-      <InputButton
-        aria-label={'Choose date' + (formattedDate ? `, selected date is ${formattedDate}` : '')}
-        onClear={
-          value
-            ? () => {
+    <Stack gap="small">
+      {label && <FieldLabel>{label}</FieldLabel>}
+      <Fragment>
+        <InputButton
+          aria-label={'Choose date' + (formattedDate ? `, selected date is ${formattedDate}` : '')}
+          onClear={
+            value
+              ? () => {
                 onClear()
                 onBlur?.()
               }
-            : undefined
-        }
-        {...props}
-        // todo - magic number - align instead to parent Field ?
-        style={{ minWidth: 200 }}
-      >
-        {formattedDate || dateFormatPlaceholder}
-      </InputButton>
-			<Calendar onDayClick={handleDayClick} selected={selectedDay} />
-    </Fragment>
+              : undefined
+          }
+          {...props}
+          style={{ minWidth: 200 }}
+        >
+          {formattedDate || dateFormatPlaceholder}
+        </InputButton>
+        <Calendar onDayClick={handleDayClick} selected={selectedDay} />
+      </Fragment>
+    </Stack>
   )
 }

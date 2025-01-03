@@ -1,8 +1,7 @@
 /** @jsxRuntime classic */
 /** @jsx jsx */
 import { useState } from 'react'
-
-import { jsx, Inline, Stack, Text } from '@keystone-ui/core'
+import { jsx, Stack, Text } from '@keystone-ui/core'
 import { FieldContainer, FieldLabel, DatePicker, FieldDescription, BlockDatePicker } from '@keystone-ui/fields'
 import {
   type CardValueComponent,
@@ -36,28 +35,26 @@ export const Field = ({
         <FieldLabel>{field.label}</FieldLabel>
         <FieldDescription id={`${field.path}-description`}>{field.description}</FieldDescription>
         {onChange ? (
-          <Inline gap="small">
-            <Stack>
-              <DatePicker
-                onUpdate={date => {
-                  onChange({
-                    ...value,
-                    value: date,
-                  })
-                }}
-                onClear={() => {
-                  onChange({ ...value, value: null })
-                }}
-                onBlur={() => setTouchedInput(true)}
-                value={value.value ?? ''}
-              />
-              {validationMessage && (
-                <Text color="red600" size="small">
-                  {validationMessage}
-                </Text>
-              )}
-            </Stack>
-          </Inline>
+          <Stack>
+            <DatePicker
+              onUpdate={date => {
+                onChange({
+                  ...value,
+                  value: date,
+                })
+              }}
+              onClear={() => {
+                onChange({ ...value, value: null })
+              }}
+              onBlur={() => setTouchedInput(true)}
+              value={value.value ?? ''}
+            />
+            {validationMessage && (
+              <Text color="red600" size="small">
+                {validationMessage}
+              </Text>
+            )}
+          </Stack>
         ) : (
           value.value !== null && <Text>{formatOutput(value.value)}</Text>
         )}
@@ -71,10 +68,6 @@ function validate(
   fieldMeta: CalendarDayFieldMeta,
   label: string
 ): string | undefined {
-  // if we recieve null initially on the item view and the current value is null,
-  // we should always allow saving it because:
-  // - the value might be null in the database and we don't want to prevent saving the whole item because of that
-  // - we might have null because of an access control error
   if (value.kind === 'update' && value.initial === null && value.value === null) {
     return undefined
   }
@@ -86,7 +79,7 @@ function validate(
 }
 
 export const Cell: CellComponent = ({ item, field, linkTo }) => {
-  const value = item[field.path]
+  let value = item[field.path]
   return linkTo ? (
     <CellLink {...linkTo}>{formatOutput(value)}</CellLink>
   ) : (
@@ -122,6 +115,12 @@ export type CalendarDayFieldMeta = {
   isRequired: boolean
 }
 
+type FilterType = {
+  onChange: (value: string) => void
+  value: string
+  type: string
+}
+
 export const controller = (
   config: FieldControllerConfig<CalendarDayFieldMeta>
 ): FieldController<Value, string> & { fieldMeta: CalendarDayFieldMeta } => {
@@ -141,7 +140,7 @@ export const controller = (
     },
     validate: value => validate(value, config.fieldMeta, config.label) === undefined,
     filter: {
-      Filter({ onChange, value }) {
+      Filter({ onChange, value }: FilterType) {
         return (
           <BlockDatePicker
             onClear={() => {
@@ -160,30 +159,26 @@ export const controller = (
           />
         )
       },
-      graphql: ({ type, value }) => {
-        try {
-          const valueWithoutWhitespace = value.replace(/\s/g, '')
-          if (!valueWithoutWhitespace) return { [config.path]: { [type]: null } }
 
-          // Handle different date formats and ensure valid date parsing
+      graphql: ({ type, value }: { type: string, value: string }) => {
+        try {
+          if (!value) return { [config.path]: { [type]: null } }
+
+          const valueWithoutWhitespace = value.replace(/\s/g, '')
           let date: Date
 
-          // Check if the date is in DD-MM-YYYY format
           if (valueWithoutWhitespace.match(/^\d{2}-\d{2}-\d{4}$/)) {
             const [day, month, year] = valueWithoutWhitespace.split('-')
             date = new Date(Number(year), Number(month) - 1, Number(day))
           } else {
-            // Try parsing as a regular date string
             date = new Date(valueWithoutWhitespace)
           }
 
-          // Validate if date is valid
           if (isNaN(date.getTime())) {
             console.error('Invalid date:', valueWithoutWhitespace)
             return { [config.path]: { [type]: null } }
           }
 
-          // Format the date to YYYY-MM-DD for calendarDay
           const formattedDate = date.toISOString().split('T')[0]
 
           return {
@@ -196,28 +191,15 @@ export const controller = (
           return { [config.path]: { [type]: null } }
         }
       },
-      Label({ label, value }) {
-        // Format the displayed date in a more readable format
-        const formattedValue = value
-          ? new Date(value).toLocaleDateString()
-          : value
-        return `${label.toLowerCase()}: ${formattedValue}`
+
+      Label({ label, value }: { label: string, value: string }) {
+        const formattedValue = value ? new Date(value).toLocaleDateString() : ''
+        return `${label}: ${formattedValue}`
       },
+
       types: {
-        gt: {
-          label: '在此日期之後',
-          initialValue: '',
-        },
-        lt: {
-          label: '在此日期之前',
-          initialValue: '',
-        },
-        gte: {
-          label: '在此日期當天或之後',
-          initialValue: '',
-        },
-        lte: {
-          label: '在此日期當天或之前',
+        equals: {
+          label: '在此日期當天',
           initialValue: '',
         },
       },
