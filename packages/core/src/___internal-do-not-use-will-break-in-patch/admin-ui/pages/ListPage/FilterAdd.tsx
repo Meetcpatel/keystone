@@ -41,7 +41,7 @@ const fieldSelectComponents: ComponentProps<typeof Options>['components'] = {
     )
   },
 }
-export function FilterAdd ({
+export function FilterAdd({
   listKey,
   filterableFields,
 }: {
@@ -82,7 +82,7 @@ export function FilterAdd ({
   )
 }
 
-function FilterAddPopoverContent ({
+function FilterAddPopoverContent({
   onClose,
   listKey,
   filterableFields,
@@ -198,29 +198,32 @@ function FilterAddPopoverContent ({
         />
       )}
       {state.kind === 'filter-value' && (
-        <Select
-          width="full"
-          value={{
-            value: state.filterType,
-            label: filtersByFieldThenType[state.fieldPath][state.filterType],
-          }}
-          onChange={newVal => {
-            if (newVal) {
-              setState({
-                kind: 'filter-value',
-                fieldPath: state.fieldPath,
-                filterValue:
-                  fieldsWithFilters[state.fieldPath].controller.filter.types[newVal.value]
-                    .initialValue,
-                filterType: newVal.value,
-              })
-            }
-          }}
-          options={Object.keys(filtersByFieldThenType[state.fieldPath]).map(filterType => ({
-            label: filtersByFieldThenType[state.fieldPath][filterType],
-            value: filterType,
-          }))}
-        />
+        // Hide filter type selector for calendar fields
+        !state.fieldPath.includes('createdAt') && (
+          <Select
+            width="full"
+            value={{
+              value: state.filterType,
+              label: filtersByFieldThenType[state.fieldPath][state.filterType],
+            }}
+            onChange={newVal => {
+              if (newVal) {
+                setState({
+                  kind: 'filter-value',
+                  fieldPath: state.fieldPath,
+                  filterValue:
+                    fieldsWithFilters[state.fieldPath].controller.filter.types[newVal.value]
+                      .initialValue,
+                  filterType: newVal.value,
+                })
+              }
+            }}
+            options={Object.keys(filtersByFieldThenType[state.fieldPath]).map(filterType => ({
+              label: filtersByFieldThenType[state.fieldPath][filterType],
+              value: filterType,
+            }))}
+          />
+        )
       )}
       {state.kind == 'filter-value' &&
         (() => {
