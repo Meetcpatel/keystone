@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 import { jsx, Inline, Stack, Text } from '@keystone-ui/core'
-import { FieldContainer, FieldLabel, DatePicker, FieldDescription } from '@keystone-ui/fields'
+import { FieldContainer, FieldLabel, DatePicker, FieldDescription, BlockDatePicker } from '@keystone-ui/fields'
 import {
   type CardValueComponent,
   type CellComponent,
@@ -66,7 +66,7 @@ export const Field = ({
   )
 }
 
-function validate (
+function validate(
   value: Value,
   fieldMeta: CalendarDayFieldMeta,
   label: string
@@ -104,7 +104,7 @@ export const CardValue: CardValueComponent = ({ item, field }) => {
   )
 }
 
-function formatOutput (isoDateString: string | null) {
+function formatOutput(isoDateString: string | null) {
   if (!isoDateString) {
     return null
   }
@@ -140,5 +140,87 @@ export const controller = (
       return { [config.path]: value }
     },
     validate: value => validate(value, config.fieldMeta, config.label) === undefined,
+    filter: {
+      Filter({ onChange, value }) {
+        return (
+          <BlockDatePicker
+            onClear={() => {
+              onChange('')
+            }}
+            onUpdate={date => {
+              try {
+                const formattedDate = date ? new Date(date).toISOString().split('T')[0] : ''
+                onChange(formattedDate)
+              } catch (error) {
+                console.error('Error formatting date:', error)
+                onChange('')
+              }
+            }}
+            value={value}
+          />
+        )
+      },
+      graphql: ({ type, value }) => {
+        try {
+          const valueWithoutWhitespace = value.replace(/\s/g, '')
+          if (!valueWithoutWhitespace) return { [config.path]: { [type]: null } }
+
+          // Handle different date formats and ensure valid date parsing
+          let date: Date
+
+          // Check if the date is in DD-MM-YYYY format
+          if (valueWithoutWhitespace.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [day, month, year] = valueWithoutWhitespace.split('-')
+            date = new Date(Number(year), Number(month) - 1, Number(day))
+          } else {
+            // Try parsing as a regular date string
+            date = new Date(valueWithoutWhitespace)
+          }
+
+          // Validate if date is valid
+          if (isNaN(date.getTime())) {
+            console.error('Invalid date:', valueWithoutWhitespace)
+            return { [config.path]: { [type]: null } }
+          }
+
+          // Format the date to YYYY-MM-DD for calendarDay
+          const formattedDate = date.toISOString().split('T')[0]
+
+          return {
+            [config.path]: {
+              [type]: formattedDate
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing date:', error)
+          return { [config.path]: { [type]: null } }
+        }
+      },
+      Label({ label, value }) {
+        // Format the displayed date in a more readable format
+        const formattedValue = value
+          ? new Date(value).toLocaleDateString()
+          : value
+        return `${label.toLowerCase()}: ${formattedValue}`
+      },
+      types: {
+        gt: {
+          label: '在此日期之後',
+          initialValue: '',
+        },
+        lt: {
+          label: '在此日期之前',
+          initialValue: '',
+        },
+        gte: {
+          label: '在此日期當天或之後',
+          initialValue: '',
+        },
+        lte: {
+          label: '在此日期當天或之前',
+          initialValue: '',
+        },
+      },
+    },
   }
 }
