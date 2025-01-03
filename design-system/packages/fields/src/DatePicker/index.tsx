@@ -16,6 +16,9 @@ import { type DateType } from '../types'
 import { Calendar } from './Calendar'
 import { InputButton } from './components/InputButton'
 
+
+export {BlockDatePicker} from './BlockDatePicker'
+
 export type DateInputValue = string | undefined
 
 export type DatePickerProps = {
